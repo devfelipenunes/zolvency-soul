@@ -1,0 +1,51 @@
+{
+  "name": "@soul/auth-sdk",
+  "version": "0.1.0",
+  "description": "Professional TypeScript SDK for Soul Protocol on Stellar Soroban",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "bindings/dist",
+    "bindings/package.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "dev": "tsup src/index.ts --format esm --watch --dts",
+    "test": "vitest run",
+    "generate-bindings": "stellar contract bindings typescript --wasm soul.wasm --output-dir bindings --overwrite && cd bindings && npm install && npm run build"
+  },
+  "keywords": [
+    "stellar",
+    "soroban",
+    "soul",
+    "protocol",
+    "identity",
+    "sdk",
+    "passkey",
+    "webauthn",
+    "sbt"
+  ],
+  "author": "Zolvency",
+  "license": "MIT",
+  "dependencies": {
+    "@soul/soul-contract-bindings": "file:bindings",
+    "@stellar/stellar-sdk": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}
