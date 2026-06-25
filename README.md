@@ -8,6 +8,9 @@ A professional, open-source TypeScript/JavaScript SDK for querying and interacti
 
 - **Multi-Network Support**: Seamless integration with both Stellar `testnet` and `mainnet`.
 - **Natively Formatted Data**: No need to manually parse ledger timestamps or buffer keys. Under the hood, public keys are formatted to hex strings, timestamps are converted into native JavaScript `Date` objects, and contract `Result` wraps are unwrapped.
+- **WebAuthn Biometrics**: Natively trigger, verify, and parse browser platform credentials.
+- **ECDSA & ASN.1 Parsers**: Built-in support to parse SPKI DER keys to 65-byte uncompressed format (`04` prefix) and normalize ASN.1 signatures to 64-byte compact, low-S normalized signatures (`r || s`) for Soroban compatibility.
+- **Recovery/Rotation Payloads**: Simple synchronous helpers to compute recovery and rotation message hashes in any environment.
 - **TypeScript First**: Complete Type definitions for all return types and options.
 - **Developer Friendly**: Built-in methods to easily check registrations, query registry limits, retrieve admin keys, and find identities by passkeys.
 
@@ -80,6 +83,44 @@ const soul = await client.getSoulByPasskey(passkeyHex);
 const soulId = await client.getSoulIdByPasskey(passkeyHex);
 ```
 
+### 3. WebAuthn Passkeys & Signatures
+
+#### Create a Passkey
+Trigger the native browser biometric prompt to register a new platform passkey:
+```typescript
+import { createPasskey } from "@soul/auth-sdk";
+
+const result = await createPasskey({
+  username: "alice@example.com",
+  displayName: "Alice",
+});
+
+console.log("Credential ID (base64url):", result.credentialId);
+console.log("Uncompressed Public Key (Hex, 65 bytes):", result.publicKey);
+```
+
+#### Login with a Passkey
+Authenticate a challenge using biometrics and get a 64-byte compact signature (`r || s`) formatted for Soroban contract validation:
+```typescript
+import { loginWithPasskey } from "@soul/auth-sdk";
+
+const result = await loginWithPasskey({
+  challenge: "dGVzdC1jaGFsbGVuZ2U=", // base64, hex, or raw bytes
+});
+
+console.log("Signature (Hex, 64 bytes):", result.signature);
+```
+
+#### Compute Message Hashes for Recovery & Rotation
+Compute message hashes of type `sha256(old_key || new_key)` to register recovery or rotate credentials:
+```typescript
+import { computeRecoveryMessageHash } from "@soul/auth-sdk";
+
+const oldKey = "04...";
+const newKey = "04...";
+const hashToSign = computeRecoveryMessageHash(oldKey, newKey);
+```
+
 ---
 
 ## 🛠️ API Reference
@@ -97,6 +138,20 @@ const soulId = await client.getSoulIdByPasskey(passkeyHex);
 * `passkey`: `string` (Hex public key of the active passkey)
 * `recoveryPubkey`: `string` (Hex public key of the recovery device)
 * `mintedAt`: `Date` (JavaScript Date representing when the Soul was minted)
+
+### Helper Functions
+
+#### `createPasskey(options: CreatePasskeyOptions): Promise<CreatePasskeyResult>`
+Triggers browser platform passkey registration (secp256r1/ES256) and returns the credential details along with the uncompressed 65-byte public key.
+
+#### `loginWithPasskey(options: LoginWithPasskeyOptions): Promise<LoginWithPasskeyResult>`
+Triggers browser platform biometric assertion prompt and returns the credential ID, signature (normalized to low-S compact 64-byte), and authentication parameters.
+
+#### `computeRecoveryMessageHash(oldPasskey, newPasskey): Uint8Array`
+Generates a SHA-256 hash of concatenated old and new uncompressed passkeys (65 bytes each) to be used during recovery verification.
+
+#### `computeRotationMessageHash(oldRecoveryKey, newRecoveryKey): Uint8Array`
+Generates a SHA-256 hash of concatenated old and new uncompressed recovery keys (65 bytes each) to be used during recovery key rotation.
 
 ---
 
