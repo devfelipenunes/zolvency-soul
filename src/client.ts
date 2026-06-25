@@ -1,6 +1,8 @@
 import { Client as ContractClient } from "@soul/soul-contract-bindings";
 import type { SoulData } from "@soul/soul-contract-bindings";
 import { Buffer } from "buffer";
+import { toBuffer } from "./utils/encoding.js";
+import { NETWORKS } from "./constants/index.js";
 
 export interface SoulClientOptions {
   network?: "testnet" | "mainnet";
@@ -13,22 +15,15 @@ export interface SoulClientOptions {
 export interface FormattedSoulData {
   id: number;
   owner: string;
-  passkey: string;          // Hex public key representation
-  recoveryPubkey: string;   // Hex recovery public key representation
-  mintedAt: Date;           // JavaScript Date object from ledger timestamp
+  /** Hex public key representation */
+  passkey: string;
+  /** Hex recovery public key representation */
+  recoveryPubkey: string;
+  /** JavaScript Date object from ledger timestamp */
+  mintedAt: Date;
 }
 
-/**
- * Normalizes a string (hex), Uint8Array, or Buffer input into a Buffer.
- * Used internally to format public keys before sending to the Soroban contract.
- */
-function toBuffer(val: string | Uint8Array | Buffer): Buffer {
-  if (typeof val === "string") {
-    const cleanHex = val.startsWith("0x") ? val.slice(2) : val;
-    return Buffer.from(cleanHex, "hex");
-  }
-  return Buffer.from(val);
-}
+
 
 /**
  * Formats raw SoulData from the contract into developer-friendly types.
@@ -48,19 +43,11 @@ export class SoulClient {
 
   constructor(options: SoulClientOptions = {}) {
     const network = options.network || "testnet";
-    const contractId = options.contractId || "CBI7N6LOZTVWI5UBE5M7XNDTWHWGO37BZA4X62PM3OP52IGUYMD7XVMV";
+    const config = NETWORKS[network];
     
-    const networkPassphrase = options.networkPassphrase || (
-      network === "testnet" 
-        ? "Test SDF Network ; September 2015" 
-        : "Public Global Stellar Network ; October 2015"
-    );
-    
-    const rpcUrl = options.rpcUrl || (
-      network === "testnet" 
-        ? "https://soroban-testnet.stellar.org" 
-        : "https://soroban-mainnet.stellar.org"
-    );
+    const contractId = options.contractId || config.contractId;
+    const networkPassphrase = options.networkPassphrase || config.networkPassphrase;
+    const rpcUrl = options.rpcUrl || config.rpcUrl;
 
     this.contract = new ContractClient({
       networkPassphrase,
