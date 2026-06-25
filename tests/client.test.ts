@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { SoulClient } from "./client.js";
+import { Keypair } from "@stellar/stellar-sdk";
+import { SoulClient } from "../src/client.js";
 
 describe("SoulClient Formatted Queries", () => {
   const client = new SoulClient({
@@ -13,10 +14,19 @@ describe("SoulClient Formatted Queries", () => {
     expect(typeof total).toBe("number");
   });
 
-  it("should check if address has soul", async () => {
-    const has = await client.hasSoul("GCNJNOAQKM3XDEFX2VVPJKXZBF5LN323KZZPSZ73ATEHNY2XT7677ZAG");
+  it("should check if address has soul and fetch its ID if present", async () => {
+    const address = "GCNJNOAQKM3XDEFX2VVPJKXZBF5LN323KZZPSZ73ATEHNY2XT7677ZAG";
+    const has = await client.hasSoul(address);
     console.log("Has soul:", has);
     expect(typeof has).toBe("boolean");
+
+    const soulId = await client.getSoulIdByAddress(address);
+    console.log("Soul ID for address:", soulId);
+    if (has) {
+      expect(typeof soulId).toBe("number");
+    } else {
+      expect(soulId).toBeNull();
+    }
   });
 
   it("should fetch soul by ID and format the response correctly", async () => {
@@ -26,20 +36,36 @@ describe("SoulClient Formatted Queries", () => {
       expect(typeof soul.id).toBe("number");
       expect(typeof soul.owner).toBe("string");
       expect(typeof soul.passkey).toBe("string");
-      expect(soul.passkey).toMatch(/^[0-9a-fA-F]+$/); // Should be a valid hex string
+      expect(soul.passkey).toMatch(/^[0-9a-fA-F]+$/);
       expect(typeof soul.recoveryPubkey).toBe("string");
       expect(soul.recoveryPubkey).toMatch(/^[0-9a-fA-F]+$/);
       expect(soul.mintedAt).toBeInstanceOf(Date);
       
-      // Test getSoulByPasskey using the retrieved passkey hex
       const soulByPasskey = await client.getSoulByPasskey(soul.passkey);
       expect(soulByPasskey).not.toBeNull();
       expect(soulByPasskey!.id).toBe(soul.id);
 
-      // Test getSoulIdByPasskey using the retrieved passkey hex
       const soulIdByPasskey = await client.getSoulIdByPasskey(soul.passkey);
       expect(soulIdByPasskey).toBe(soul.id);
     }
+  });
+
+  it("should handle null results for non-existent entities", async () => {
+    const nonExistentId = 999999;
+    const nonExistentPasskey = "04" + "00".repeat(64);
+    const nonExistentAddress = Keypair.random().publicKey();
+
+    const soul = await client.getSoul(nonExistentId);
+    expect(soul).toBeNull();
+
+    const soulByPasskey = await client.getSoulByPasskey(nonExistentPasskey);
+    expect(soulByPasskey).toBeNull();
+
+    const idByPasskey = await client.getSoulIdByPasskey(nonExistentPasskey);
+    expect(idByPasskey).toBeNull();
+
+    const idByAddress = await client.getSoulIdByAddress(nonExistentAddress);
+    expect(idByAddress).toBeNull();
   });
 
   it("should fetch admin and relayer addresses", async () => {
